@@ -1,0 +1,180 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  Job Application Tracker - Serverless pipeline for scraping job postings and logging to Google Sheets
+
+Globals:
+  Function:
+    Timeout: 60
+    Runtime: python3.11
+    MemorySize: 512
+    Environment:
+      Variables:
+        LOG_LEVEL: INFO
+
+Parameters:
+  GoogleCredentialsSecretArn:
+    Type: String
+    Description: ARN of the AWS Secrets Manager secret containing Google Service Account credentials
+    Default: "{{PLACEHOLDER_GOOGLE_CREDENTIALS_SECRET_ARN}}"
+  
+  GoogleSheetId:
+    Type: String
+    Description: Google Sheet ID where job data will be logged
+    Default: "{{PLACEHOLDER_GOOGLE_SHEET_ID}}"
+
+Resources:
+  # SQS Queue for job data
+  JobApplicationQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: JobApplicationQueue
+      VisibilityTimeoutSeconds: 300
+      MessageRetentionPeriod: 1209600  # 14 days
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt JobApplicationQueueDLQ.Arn
+        maxReceiveCount: 3
+
+  # Dead Letter Queue for failed messages
+  JobApplicationQueueDLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: JobApplicationQueueDLQ
+      MessageRetentionPeriod: 1209600  # 14 days
+
+
+
+  # IAM Role for Scraper Lambda
+  ScraperLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: ScraperSQSPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - sqs:SendMessage
+                Resource: !GetAtt JobApplicationQueue.Arn
+
+
+  # IAM Role for Uploader Lambda
+  UploaderLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: UploaderSecretsPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                Resource: !Ref GoogleCredentialsSecretArn
+        - PolicyName: UploaderSQSPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - sqs:DeleteMessage
+                  - sqs:GetQueueAttributes
+                  - sqs:ReceiveMessage
+                Resource: !GetAtt JobApplicationQueue.Arn
+
+
+
+
+  # Scraper Lambda Function
+  ScraperFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: job-application-scraper
+      CodeUri: .
+      Handler: scraper.lambda_handler
+      Role: !GetAtt ScraperLambdaRole.Arn
+      Environment:
+        Variables:
+          SQS_QUEUE_URL: !Ref JobApplicationQueue
+      Events:
+        ApiEvent:
+          Type: Api
+          Properties:
+            Path: /scrape
+            Method: post
+            RestApiId: !Ref JobApplicationApi
+
+  # Uploader Lambda Function
+  UploaderFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: job-application-uploader
+      CodeUri: .
+      Handler: uploader.lambda_handler
+      Role: !GetAtt UploaderLambdaRole.Arn
+      Environment:
+        Variables:
+          GOOGLE_CREDENTIALS_SECRET_ARN: !Ref GoogleCredentialsSecretArn
+          GOOGLE_SHEET_ID: !Ref GoogleSheetId
+      Events:
+        SQSEvent:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt JobApplicationQueue.Arn
+            BatchSize: 1
+
+
+
+  # API Gateway
+  JobApplicationApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: prod
+      Cors:
+        AllowMethods: "'POST,OPTIONS'"
+        AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+        AllowOrigin: "'*'"
+
+Outputs:
+  ScraperFunction:
+    Description: "Scraper Lambda Function ARN"
+    Value: !GetAtt ScraperFunction.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-ScraperFunction"
+
+  UploaderFunction:
+    Description: "Uploader Lambda Function ARN"
+    Value: !GetAtt UploaderFunction.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-UploaderFunction"
+
+  JobApplicationQueue:
+    Description: "SQS Queue ARN"
+    Value: !GetAtt JobApplicationQueue.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-JobApplicationQueue"
+
+  ApiGatewayUrl:
+    Description: "API Gateway endpoint URL"
+    Value: !Sub "https://${JobApplicationApi}.execute-api.${AWS::Region}.amazonaws.com/prod/scrape"
+    Export:
+      Name: !Sub "${AWS::StackName}-ApiGatewayUrl" 
