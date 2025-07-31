@@ -2,7 +2,7 @@
 
 A serverless pipeline for automating job application tracking. This project demonstrates AWS serverless architecture, web scraping, and integration with Google Sheets.
 
-## 🎯 Project Overview
+## Project Overview
 
 ### Core Functionality
 - **Web Scraping**: Automatically extracts job details from posting URLs
@@ -16,7 +16,7 @@ A serverless pipeline for automating job application tracking. This project demo
 - **Error Handling**: Robust retry mechanisms and error logging
 - **Easy Deployment**: Infrastructure as Code with AWS SAM
 
-## 🏗️ Architecture Overview
+##  Architecture Overview
 
 ```
 ┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐    ┌─────────────────┐
@@ -40,14 +40,14 @@ A serverless pipeline for automating job application tracking. This project demo
 5. **Dead Letter Queue**: Handles failed messages for retry
 6. **Google Sheets**: Stores job application data
 
-## 📋 Prerequisites
+## Prerequisites
 
 - AWS CLI configured with appropriate permissions
 - AWS SAM CLI installed
 - Google Service Account with Editor access to your Google Sheet
 - Python 3.11+ (for local development)
 
-## 🚀 Setup Instructions
+## Setup Instructions
 
 ### 1. Prepare Your Google Sheet
 
@@ -88,7 +88,7 @@ sam build
 sam deploy --guided
 ```
 
-## 🧪 Testing
+## Testing
 
 ### Test the API Endpoint
 
@@ -106,7 +106,7 @@ curl -X POST https://your-api-gateway-url/prod/scrape \
 python test_local.py
 ```
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 job-application-tracker/
@@ -121,7 +121,7 @@ job-application-tracker/
 └── QUICKSTART.md       # Quick setup guide
 ```
 
-## 🔧 Configuration
+## Configuration
 
 ### CSS Selectors
 
@@ -153,7 +153,7 @@ REQUEST_HEADERS = {
 REQUEST_TIMEOUT = 30
 ```
 
-## 🚨 Error Handling
+## Error Handling
 
 The application includes comprehensive error handling:
 
@@ -162,7 +162,7 @@ The application includes comprehensive error handling:
 - **SQS Failures**: Dead letter queue for failed messages
 - **Google Sheets Errors**: Detailed logging and retry logic
 
-## 📊 Monitoring
+## Monitoring
 
 Basic monitoring is provided through AWS CloudWatch:
 
@@ -171,14 +171,14 @@ Basic monitoring is provided through AWS CloudWatch:
 - API Gateway request logs
 - Error tracking and alerting
 
-## 🔒 Security
+## Security
 
 - **IAM Roles**: Least privilege access for each Lambda function
 - **Secrets Manager**: Secure storage of Google credentials
 - **Input Validation**: URL format and domain validation
 - **Error Logging**: No sensitive data in logs
 
-## 🚀 Deployment
+## Deployment
 
 ### Quick Deploy
 
@@ -193,7 +193,7 @@ sam build
 sam deploy --guided
 ```
 
-## 🧪 Development
+## Development
 
 ### Local Development
 
@@ -212,7 +212,7 @@ python test_local.py
 sam local invoke ScraperFunction --event events/test-event.json
 ```
 
-## 📈 Scaling
+## Scaling
 
 The application automatically scales based on demand:
 
@@ -221,7 +221,7 @@ The application automatically scales based on demand:
 - **SQS**: Buffers messages during high load
 - **Google Sheets**: Handles batch operations efficiently
 
-## 🛠️ Troubleshooting
+##  Troubleshooting
 
 ### Common Issues
 
@@ -241,7 +241,7 @@ The application automatically scales based on demand:
 
 Enable detailed logging by setting `LOG_LEVEL=DEBUG` in the Lambda environment variables.
 
-## 🤝 Contributing
+## Contributing
 
 1. Fork the repository
 2. Create a feature branch
@@ -249,11 +249,11 @@ Enable detailed logging by setting `LOG_LEVEL=DEBUG` in the Lambda environment v
 4. Test thoroughly
 5. Submit a pull request
 
-## 📄 License
+## License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
 
-## 🙏 Acknowledgments
+## Acknowledgments
 
 - AWS SAM for serverless infrastructure
 - BeautifulSoup for web scraping
